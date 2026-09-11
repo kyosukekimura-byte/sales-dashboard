@@ -405,13 +405,30 @@ function saveLocalFile(filename, text) {
   }
 }
 
+async function fetchManifestFiles() {
+  // GitHub Pagesなど、/api/csvs を提供できない静的ホスティング向けのフォールバック。
+  // 同じフォルダの csv-manifest.json にファイル名一覧を静的に記載しておく。
+  try {
+    const res = await fetch("csv-manifest.json");
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (err) {
+    return [];
+  }
+}
+
 async function refreshCsvList(selectValue) {
   let serverFiles = [];
   try {
     const res = await fetch("/api/csvs");
-    if (res.ok) serverFiles = await res.json();
+    if (res.ok) {
+      serverFiles = await res.json();
+    } else {
+      serverFiles = await fetchManifestFiles();
+    }
   } catch (err) {
-    // サーバー未接続。ローカル保存分だけで一覧を作る。
+    // server.py 未接続。静的ホスティング向けのマニフェストを試す。
+    serverFiles = await fetchManifestFiles();
   }
   const localFiles = Object.keys(getLocalFiles()).sort();
 
