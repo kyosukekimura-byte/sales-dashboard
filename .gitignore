@@ -7,5 +7,9 @@
 !/売上データ_4-6月.csv
 !/README.md
 !/csv-manifest.json
+!/requirements.txt
+!/.env.example
 !/.claude/
 !/.claude/launch.json
+
+# 実際のAPIキーを含む.envは絶対にコミットしない(上のdeny-allにより自動的に除外される)

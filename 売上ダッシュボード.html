@@ -212,6 +212,64 @@
     line-height: 1.9;
     color: var(--text);
   }
+  .chat-messages {
+    max-height: 320px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .chat-messages:empty::before {
+    content: "質問を入力すると、AIが回答します。";
+    color: var(--text-sub);
+    font-size: 13px;
+  }
+  .chat-bubble {
+    max-width: 80%;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+  .chat-bubble.user {
+    align-self: flex-end;
+    background: var(--accent);
+    color: #fff;
+  }
+  .chat-bubble.assistant {
+    align-self: flex-start;
+    background: var(--bar-track);
+    color: var(--text);
+  }
+  .chat-bubble.pending { opacity: 0.6; }
+  .chat-input-row {
+    display: flex;
+    gap: 8px;
+  }
+  .chat-input-row input {
+    flex: 1;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--text);
+    background: #fff;
+  }
+  .chat-input-row button {
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .chat-input-row button:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
   .filter-field-cats { flex: 1; min-width: 240px; }
   .cat-checks {
     display: flex;
@@ -320,6 +378,16 @@
     </thead>
     <tbody></tbody>
   </table>
+</div>
+
+<div class="panel">
+  <h2>AIチャット</h2>
+  <div id="chatMessages" class="chat-messages"></div>
+  <div id="chatError" class="load-error" hidden></div>
+  <form id="chatForm" class="chat-input-row">
+    <input type="text" id="chatInput" placeholder="質問を入力..." autocomplete="off">
+    <button type="submit" id="chatSend">送信</button>
+  </form>
 </div>
 
 <script>
@@ -672,6 +740,67 @@ document.getElementById("resetFilters").addEventListener("click", () => {
   render();
 });
 csvSelect.addEventListener("change", () => loadSelected(csvSelect.value));
+
+// --- AIチャット ---
+// バックエンド(server.py / FastAPI)の /api/chat に問い合わせるだけで、
+// APIキーはサーバー側の.envにのみ置かれフロントには一切渡ってこない。
+const chatMessagesEl = document.getElementById("chatMessages");
+const chatForm = document.getElementById("chatForm");
+const chatInput = document.getElementById("chatInput");
+const chatSend = document.getElementById("chatSend");
+const chatError = document.getElementById("chatError");
+
+let chatHistory = [];
+
+function appendChatBubble(role, text) {
+  const bubble = document.createElement("div");
+  bubble.className = `chat-bubble ${role}`;
+  bubble.textContent = text;
+  chatMessagesEl.appendChild(bubble);
+  chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  return bubble;
+}
+
+chatForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const question = chatInput.value.trim();
+  if (!question) return;
+
+  chatError.hidden = true;
+  chatInput.value = "";
+  chatInput.disabled = true;
+  chatSend.disabled = true;
+
+  appendChatBubble("user", question);
+  chatHistory.push({ role: "user", content: question });
+  const pending = appendChatBubble("assistant", "考え中...");
+  pending.classList.add("pending");
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: chatHistory }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+
+    pending.classList.remove("pending");
+    pending.textContent = body.reply;
+    chatHistory.push({ role: "assistant", content: body.reply });
+  } catch (err) {
+    pending.remove();
+    chatHistory.pop(); // 失敗した質問は履歴から取り消す
+    chatError.hidden = false;
+    chatError.innerHTML =
+      `AIチャットに問い合わせできませんでした(${err.message})。<br>` +
+      `server.py(FastAPI)を起動し、.envにOPENAI_API_KEYを設定した状態でこのページを開いてください。`;
+  } finally {
+    chatInput.disabled = false;
+    chatSend.disabled = false;
+    chatInput.focus();
+  }
+});
 
 async function init() {
   const lastSelected = localStorage.getItem(LAST_SELECTED_KEY);

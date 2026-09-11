@@ -5,6 +5,16 @@ CSVの売上データから、合計売上・月別推移・商品別ランキ�
 ## 使い方
 
 ```bash
+pip install -r requirements.txt
+```
+
+`.env.example` を `.env` にコピーし、`OPENAI_API_KEY` に自分のAPIキーを設定します(AIチャットを使わない場合は不要です)。
+
+```bash
+copy .env.example .env
+```
+
+```bash
 python server.py
 ```
 
@@ -21,13 +31,23 @@ http://localhost:8000/売上ダッシュボード.html
 - 商品別の平均単価、販売数量ベースの売れ筋分析
 - フォルダ内のCSVファイルをドロップダウンで切り替え
 - CSVファイルのドラッグ&ドロップ読み込み(ブラウザに自動保存され、次回も選択可能)
+- AIチャット(FastAPIバックエンド経由でOpenAI APIに問い合わせ)
 
 ## ファイル構成
 
 - `売上ダッシュボード.html` — ダッシュボード本体
-- `server.py` — ローカルサーバー(CSV一覧・配信用)
+- `server.py` — ローカルサーバー(FastAPI。CSV一覧・配信、AIチャットの`/api/chat`を提供)
+- `requirements.txt` — Pythonの依存パッケージ
+- `.env.example` — 環境変数のサンプル(実際のキーは`.env`に設定し、Gitにはコミットしない)
 - `csv-manifest.json` — GitHub Pagesなど`server.py`を使えない環境向けのCSVファイル一覧
 - `売上データ.csv` / `売上データ_4-6月.csv` — サンプルデータ
+
+## AIチャットについて
+
+- APIキーはサーバー側の`.env`にのみ置かれ、フロントエンド(ブラウザ)には一切渡されません。
+- ブラウザは`/api/chat`にメッセージ履歴を送るだけで、OpenAIへの問い合わせは`server.py`(FastAPI)が行います。
+- `.env`や`.git`などドット始まりのパスは静的配信から除外しており、`/.env`のようなURLで直接アクセスしても404になります。
+- GitHub Pagesは静的ホスティングのためバックエンドを実行できず、**AIチャットは動作しません**(ローカルで`server.py`を起動しているときのみ利用可能です)。
 
 ## CSVフォーマット
 
