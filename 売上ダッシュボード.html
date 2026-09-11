@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>売上ダッシュボード</title>
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --card-bg: #ffffff;
+    --text: #1f2937;
+    --text-sub: #6b7280;
+    --accent: #2563eb;
+    --accent-2: #10b981;
+    --border: #e5e7eb;
+    --bar-track: #eef1f6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+  }
+  h1 {
+    font-size: 22px;
+    margin: 0 0 4px;
+  }
+  .subtitle {
+    color: var(--text-sub);
+    font-size: 13px;
+    margin: 0 0 24px;
+  }
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .kpi-label {
+    font-size: 12px;
+    color: var(--text-sub);
+    margin-bottom: 6px;
+  }
+  .kpi-value {
+    font-size: 24px;
+    font-weight: 700;
+  }
+  .kpi-value.accent { color: var(--accent); }
+  .panel {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+  }
+  .panel h2 {
+    font-size: 16px;
+    margin: 0 0 16px;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .bar-label {
+    width: 110px;
+    flex-shrink: 0;
+    font-size: 13px;
+    color: var(--text-sub);
+    text-align: right;
+  }
+  .bar-track {
+    flex: 1;
+    background: var(--bar-track);
+    border-radius: 6px;
+    height: 22px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #60a5fa);
+    border-radius: 6px;
+  }
+  .bar-value {
+    width: 100px;
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: right;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th, td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    color: var(--text-sub);
+    font-weight: 600;
+    font-size: 12px;
+  }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr:hover td { background: #f9fafb; }
+  .rank-badge {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    text-align: center;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    margin-right: 6px;
+  }
+  .rank-badge.top { background: var(--accent-2); }
+
+  .filter-panel { padding: 16px 24px; }
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 20px;
+  }
+  .filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .filter-field label {
+    font-size: 12px;
+    color: var(--text-sub);
+    font-weight: 600;
+  }
+  .filter-field input[type="date"],
+  .filter-field select {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 13px;
+    color: var(--text);
+    background: #fff;
+  }
+  .filter-field select { min-width: 180px; cursor: pointer; }
+  .load-error {
+    color: #dc2626;
+    font-size: 13px;
+    padding: 12px 0;
+    line-height: 1.6;
+  }
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 22px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .drop-zone:hover { border-color: #9ca3af; }
+  .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: #eff6ff;
+  }
+  .drop-zone-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .drop-zone-sub {
+    font-size: 12px;
+    color: var(--text-sub);
+  }
+  .drop-zone-source {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .insight-box {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .insight-box ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 13px;
+    line-height: 1.9;
+    color: var(--text);
+  }
+  .filter-field-cats { flex: 1; min-width: 240px; }
+  .cat-checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+  }
+  .cat-check {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+  }
+  .cat-check input { cursor: pointer; }
+  #resetFilters {
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    height: 34px;
+  }
+  #resetFilters:hover { background: #f3f4f6; }
+  .empty-note {
+    color: var(--text-sub);
+    font-size: 13px;
+    padding: 8px 0;
+  }
+</style>
+</head>
+<body>
+
+<h1>売上ダッシュボード</h1>
+<p class="subtitle" id="subtitle">読み込み中...</p>
+
+<div class="panel">
+  <div id="dropZone" class="drop-zone">
+    <div class="drop-zone-title">CSVファイルをここにドラッグ&ドロップ</div>
+    <div class="drop-zone-sub">またはクリックしてファイルを選択(ブラウザに自動保存され、次回も選択できます)</div>
+    <div class="drop-zone-source" id="sourceLabel"></div>
+    <input type="file" id="fileInput" accept=".csv" hidden>
+  </div>
+</div>
+
+<div class="panel filter-panel">
+  <div class="filter-row">
+    <div class="filter-field">
+      <label for="csvSelect">データファイル</label>
+      <select id="csvSelect"></select>
+    </div>
+    <div class="filter-field">
+      <label for="startDate">開始日</label>
+      <input type="date" id="startDate">
+    </div>
+    <div class="filter-field">
+      <label for="endDate">終了日</label>
+      <input type="date" id="endDate">
+    </div>
+    <div class="filter-field filter-field-cats">
+      <label>カテゴリ</label>
+      <div class="cat-checks" id="categoryChecks"></div>
+    </div>
+    <button id="resetFilters" type="button">リセット</button>
+  </div>
+</div>
+
+<div class="kpi-grid" id="kpiGrid"></div>
+
+<div class="grid-2">
+  <div class="panel">
+    <h2>月別売上推移</h2>
+    <div id="monthlyChart"></div>
+  </div>
+  <div class="panel">
+    <h2>商品別売上ランキング</h2>
+    <div id="productChart"></div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="panel">
+    <h2>商品別 平均単価</h2>
+    <div id="avgPriceChart"></div>
+  </div>
+  <div class="panel">
+    <h2>売れ筋分析(販売数量ベース)</h2>
+    <div id="qtyChart"></div>
+    <div class="insight-box" id="insightBox"></div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>商品別売上 明細</h2>
+  <table id="productTable">
+    <thead>
+      <tr>
+        <th>順位</th>
+        <th>商品名</th>
+        <th class="num">売上金額</th>
+        <th class="num">平均単価</th>
+        <th class="num">数量</th>
+        <th class="num">件数</th>
+        <th class="num">構成比</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+const csvSelect = document.getElementById("csvSelect");
+const startInput = document.getElementById("startDate");
+const endInput = document.getElementById("endDate");
+const fmtYen = n => "¥" + Math.round(n).toLocaleString("ja-JP");
+
+let data = [];
+let minDate, maxDate;
+
+function parseCSV(text) {
+  const lines = text.replace(/\r\n/g, "\n").trim().split("\n");
+  const headers = lines[0].split(",");
+  return lines.slice(1).map(line => {
+    const cols = line.split(",");
+    const row = {};
+    headers.forEach((h, i) => row[h] = cols[i]);
+    row["数量"] = Number(row["数量"]);
+    row["単価"] = Number(row["単価"]);
+    row["売上金額"] = Number(row["売上金額"]);
+    return row;
+  });
+}
+
+function showFatalError(message) {
+  document.getElementById("subtitle").textContent = "";
+  document.getElementById("kpiGrid").innerHTML = "";
+  document.getElementById("monthlyChart").innerHTML = `<p class="load-error">${message}</p>`;
+  document.getElementById("productChart").innerHTML = "";
+  document.querySelector("#productTable tbody").innerHTML = "";
+}
+
+function applyCsvText(text, sourceLabel) {
+  try {
+    data = parseCSV(text);
+    if (!data.length) throw new Error("empty");
+  } catch (err) {
+    showFatalError(`CSVの解析に失敗しました(${sourceLabel})。列構成を確認してください。`);
+    return;
+  }
+
+  const allDates = data.map(r => r["日付"]).sort();
+  minDate = allDates[0];
+  maxDate = allDates[allDates.length - 1];
+  const categories = [...new Set(data.map(r => r["カテゴリ"]))];
+
+  startInput.min = minDate; startInput.max = maxDate; startInput.value = minDate;
+  endInput.min = minDate; endInput.max = maxDate; endInput.value = maxDate;
+
+  document.getElementById("categoryChecks").innerHTML = categories.map(cat => `
+    <label class="cat-check">
+      <input type="checkbox" value="${cat}" checked> ${cat}
+    </label>
+  `).join("");
+
+  document.getElementById("sourceLabel").textContent = `現在表示中: ${sourceLabel}`;
+  render();
+}
+
+// ドラッグ&ドロップされたCSVはブラウザのlocalStorageに保存する。
+// サーバー(server.py)の起動有無に関わらず、ドロップするだけで
+// 次回このページを開いたときも同じファイルを選び直せる。
+const LOCAL_FILES_KEY = "salesDashboard.localFiles";
+const LAST_SELECTED_KEY = "salesDashboard.lastSelected";
+
+function getLocalFiles() {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_FILES_KEY) || "{}");
+  } catch (err) {
+    return {};
+  }
+}
+
+function saveLocalFile(filename, text) {
+  try {
+    const files = getLocalFiles();
+    files[filename] = text;
+    localStorage.setItem(LOCAL_FILES_KEY, JSON.stringify(files));
+    return true;
+  } catch (err) {
+    return false; // 保存容量オーバーなど
+  }
+}
+
+async function refreshCsvList(selectValue) {
+  let serverFiles = [];
+  try {
+    const res = await fetch("/api/csvs");
+    if (res.ok) serverFiles = await res.json();
+  } catch (err) {
+    // サーバー未接続。ローカル保存分だけで一覧を作る。
+  }
+  const localFiles = Object.keys(getLocalFiles()).sort();
+
+  const options = [
+    ...serverFiles.map(f => ({ value: `server::${f}`, label: f })),
+    ...localFiles.map(f => ({ value: `local::${f}`, label: `${f}（ブラウザに保存）` })),
+  ];
+
+  csvSelect.innerHTML = options.map(o => `<option value="${o.value}">${o.label}</option>`).join("");
+  if (selectValue && options.some(o => o.value === selectValue)) {
+    csvSelect.value = selectValue;
+  }
+  return options;
+}
+
+async function loadSelected(value) {
+  const sep = value.indexOf("::");
+  const source = value.slice(0, sep);
+  const filename = value.slice(sep + 2);
+
+  if (source === "local") {
+    const text = getLocalFiles()[filename];
+    if (text === undefined) {
+      showFatalError(`ローカル保存されたファイルが見つかりません(${filename})。`);
+      return;
+    }
+    applyCsvText(text, `${filename}（ブラウザに保存）`);
+    localStorage.setItem(LAST_SELECTED_KEY, value);
+    return;
+  }
+
+  try {
+    const res = await fetch(filename);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    applyCsvText(text, filename);
+    localStorage.setItem(LAST_SELECTED_KEY, value);
+  } catch (err) {
+    showFatalError(
+      `CSVの読み込みに失敗しました(${filename})。<br>` +
+      `server.py を起動した状態で http://localhost:8000/ からこのページを開いてください。<br>` +
+      `(ドラッグ&ドロップならサーバーなしでも読み込み・保存できます)`
+    );
+  }
+}
+
+function handleDroppedFile(file) {
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith(".csv")) {
+    alert("CSVファイル(.csv)をドロップしてください。");
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const text = String(reader.result);
+    const saved = saveLocalFile(file.name, text);
+    const value = `local::${file.name}`;
+
+    applyCsvText(text, `${file.name}${saved ? "（ブラウザに保存）" : ""}`);
+    if (saved) {
+      localStorage.setItem(LAST_SELECTED_KEY, value);
+    } else {
+      document.getElementById("sourceLabel").textContent =
+        `現在表示中: ${file.name}（保存容量の上限のため保存できませんでした）`;
+    }
+    await refreshCsvList(saved ? value : undefined);
+  };
+  reader.onerror = () => showFatalError(`ファイルの読み込みに失敗しました(${file.name})。`);
+  reader.readAsText(file, "utf-8");
+}
+
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+
+["dragenter", "dragover"].forEach(evt => dropZone.addEventListener(evt, e => {
+  e.preventDefault();
+  e.stopPropagation();
+  dropZone.classList.add("drag-over");
+}));
+["dragleave", "drop"].forEach(evt => dropZone.addEventListener(evt, e => {
+  e.preventDefault();
+  e.stopPropagation();
+  dropZone.classList.remove("drag-over");
+}));
+dropZone.addEventListener("drop", e => {
+  handleDroppedFile(e.dataTransfer.files[0]);
+});
+dropZone.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", () => {
+  handleDroppedFile(fileInput.files[0]);
+  fileInput.value = "";
+});
+
+function getFilteredData() {
+  const start = startInput.value || minDate;
+  const end = endInput.value || maxDate;
+  const checked = new Set(
+    [...document.querySelectorAll('#categoryChecks input:checked')].map(el => el.value)
+  );
+  return data.filter(r =>
+    r["日付"] >= start && r["日付"] <= end && checked.has(r["カテゴリ"])
+  );
+}
+
+function render() {
+  const filtered = getFilteredData();
+
+  document.getElementById("subtitle").textContent = filtered.length
+    ? `対象期間: ${startInput.value} 〜 ${endInput.value}（${filtered.length}件の取引）`
+    : `対象期間: ${startInput.value} 〜 ${endInput.value}（該当データなし）`;
+
+  const totalSales = filtered.reduce((s, r) => s + r["売上金額"], 0);
+  const totalQty = filtered.reduce((s, r) => s + r["数量"], 0);
+
+  document.getElementById("kpiGrid").innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">合計売上金額</div>
+      <div class="kpi-value accent">${fmtYen(totalSales)}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">合計販売数量</div>
+      <div class="kpi-value">${totalQty.toLocaleString("ja-JP")} 個</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">取引件数</div>
+      <div class="kpi-value">${filtered.length.toLocaleString("ja-JP")} 件</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">平均単価</div>
+      <div class="kpi-value">${filtered.length ? fmtYen(totalSales / totalQty) : "-"}</div>
+    </div>
+  `;
+
+  if (!filtered.length) {
+    document.getElementById("monthlyChart").innerHTML = '<p class="empty-note">条件に一致するデータがありません。</p>';
+    document.getElementById("productChart").innerHTML = "";
+    document.getElementById("avgPriceChart").innerHTML = "";
+    document.getElementById("qtyChart").innerHTML = "";
+    document.getElementById("insightBox").innerHTML = "";
+    document.querySelector("#productTable tbody").innerHTML = "";
+    return;
+  }
+
+  // 月別推移
+  const monthlyMap = new Map();
+  filtered.forEach(r => {
+    const month = r["日付"].slice(0, 7);
+    monthlyMap.set(month, (monthlyMap.get(month) || 0) + r["売上金額"]);
+  });
+  const monthly = [...monthlyMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const monthlyMax = Math.max(...monthly.map(m => m[1]));
+
+  document.getElementById("monthlyChart").innerHTML = monthly.map(([month, sales]) => `
+    <div class="bar-row">
+      <div class="bar-label">${month}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(sales / monthlyMax * 100).toFixed(1)}%"></div></div>
+      <div class="bar-value">${fmtYen(sales)}</div>
+    </div>
+  `).join("");
+
+  // 商品別ランキング
+  const productMap = new Map();
+  filtered.forEach(r => {
+    const name = r["商品名"];
+    if (!productMap.has(name)) productMap.set(name, { sales: 0, qty: 0, count: 0 });
+    const p = productMap.get(name);
+    p.sales += r["売上金額"];
+    p.qty += r["数量"];
+    p.count += 1;
+  });
+  const products = [...productMap.entries()]
+    .map(([name, v]) => ({ name, ...v, avgPrice: v.sales / v.qty }))
+    .sort((a, b) => b.sales - a.sales);
+  const productMax = products[0].sales;
+
+  document.getElementById("productChart").innerHTML = products.map(p => `
+    <div class="bar-row">
+      <div class="bar-label">${p.name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(p.sales / productMax * 100).toFixed(1)}%"></div></div>
+      <div class="bar-value">${fmtYen(p.sales)}</div>
+    </div>
+  `).join("");
+
+  // 商品別 平均単価
+  const byAvgPrice = [...products].sort((a, b) => b.avgPrice - a.avgPrice);
+  const avgPriceMax = byAvgPrice[0].avgPrice;
+  document.getElementById("avgPriceChart").innerHTML = byAvgPrice.map(p => `
+    <div class="bar-row">
+      <div class="bar-label">${p.name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(p.avgPrice / avgPriceMax * 100).toFixed(1)}%"></div></div>
+      <div class="bar-value">${fmtYen(p.avgPrice)}</div>
+    </div>
+  `).join("");
+
+  // 売れ筋分析(販売数量ベース)
+  const byQty = [...products].sort((a, b) => b.qty - a.qty);
+  const qtyMax = byQty[0].qty;
+  document.getElementById("qtyChart").innerHTML = byQty.map(p => `
+    <div class="bar-row">
+      <div class="bar-label">${p.name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(p.qty / qtyMax * 100).toFixed(1)}%"></div></div>
+      <div class="bar-value">${p.qty.toLocaleString("ja-JP")} 個</div>
+    </div>
+  `).join("");
+
+  const topBySales = products[0];
+  const topByQty = byQty[0];
+  const topByAvgPrice = byAvgPrice[0];
+  const insights = [
+    `売上金額1位: ${topBySales.name}(${fmtYen(topBySales.sales)})`,
+    `販売数量1位: ${topByQty.name}(${topByQty.qty.toLocaleString("ja-JP")}個)`,
+    `平均単価が最も高い商品: ${topByAvgPrice.name}(${fmtYen(topByAvgPrice.avgPrice)}/個)`,
+  ];
+  if (topBySales.name !== topByQty.name) {
+    const salesRank = products.findIndex(p => p.name === topByQty.name) + 1;
+    insights.push(`${topByQty.name}は数量では1位ですが、売上金額では${salesRank}位です(単価が比較的低いため)。`);
+  }
+  document.getElementById("insightBox").innerHTML = `<ul>${insights.map(i => `<li>${i}</li>`).join("")}</ul>`;
+
+  const tbody = document.querySelector("#productTable tbody");
+  tbody.innerHTML = products.map((p, i) => `
+    <tr>
+      <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
+      <td>${p.name}</td>
+      <td class="num">${fmtYen(p.sales)}</td>
+      <td class="num">${fmtYen(p.avgPrice)}</td>
+      <td class="num">${p.qty.toLocaleString("ja-JP")}</td>
+      <td class="num">${p.count.toLocaleString("ja-JP")}</td>
+      <td class="num">${(p.sales / totalSales * 100).toFixed(1)}%</td>
+    </tr>
+  `).join("");
+}
+
+startInput.addEventListener("change", render);
+endInput.addEventListener("change", render);
+document.getElementById("categoryChecks").addEventListener("change", render);
+document.getElementById("resetFilters").addEventListener("click", () => {
+  startInput.value = minDate;
+  endInput.value = maxDate;
+  document.querySelectorAll('#categoryChecks input').forEach(el => el.checked = true);
+  render();
+});
+csvSelect.addEventListener("change", () => loadSelected(csvSelect.value));
+
+async function init() {
+  const lastSelected = localStorage.getItem(LAST_SELECTED_KEY);
+  const options = await refreshCsvList(lastSelected);
+
+  if (!options.length) {
+    showFatalError("表示できるCSVがありません。ドラッグ&ドロップでCSVを読み込んでください。");
+    return;
+  }
+  await loadSelected(csvSelect.value);
+}
+
+init();
+</script>
+</body>
+</html>

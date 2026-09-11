@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sales-dashboard",
+      "runtimeExecutable": "C:\\Users\\9520002\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+      "runtimeArgs": ["server.py"],
+      "port": 8000
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+# このリポジトリでは売上ダッシュボード関連ファイルのみを管理する
+/*
+!/.gitignore
+!/server.py
+!/売上ダッシュボード.html
+!/売上データ.csv
+!/売上データ_4-6月.csv
+!/README.md
+!/.claude/
+!/.claude/launch.json
